@@ -1,0 +1,295 @@
+-- 1. Count the total number of orders in the table
+
+SELECT COUNT(order_id) AS total_orders FROM orders;
+
+
+
+-- 2. Calculate the total sum of prices for all orders
+
+SELECT ROUND(SUM(price), 2) AS total_sum_prices FROM orders;
+
+
+
+-- 3. Calculate the average price across all orders
+
+SELECT ROUND(AVG(price), 2) AS average_price FROM orders;
+
+
+
+-- 4. Calculate the total quantity of items across all orders
+
+SELECT SUM(quantity) AS total_quantity FROM orders;
+
+
+
+-- 5. Calculate the percentage of orders that have more than one item
+
+SELECT
+	(COUNT(*) * 100.0 / ( SELECT COUNT(*) FROM orders )) AS percentage_orders_with_multiple_items 
+FROM
+	orders 
+WHERE
+	quantity > 1;
+
+
+
+-- 6. Calculate the sum of orders per year
+
+SELECT YEAR(sale_date) AS order_year, ROUND(SUM(price), 2) AS total_order_sum
+FROM orders
+GROUP BY order_year;
+
+
+
+-- 7. Calculate the number of orders per month
+
+SELECT 
+    DATE_FORMAT(sale_date, '%Y-%m') AS year_and_month,
+    COUNT(order_id) AS order_count
+FROM 
+    orders
+GROUP BY 
+    year_and_month
+ORDER BY 
+    year_and_month;
+
+
+
+-- 8. Find the most popular items based on order count
+
+SELECT item_name, COUNT(order_id) AS order_count
+FROM orders
+GROUP BY item_name
+ORDER BY order_count DESC;
+
+
+
+-- 9. Join the orders and customers tables on order_id and transaction_id
+
+SELECT *
+FROM orders
+INNER JOIN customers ON orders.order_id = customers.order_id AND orders.transaction_id = customers.transaction_id;
+
+
+
+-- 10. Calculate the total purchases for each listing
+
+SELECT
+	listing_id,
+	ROUND( SUM( price * quantity ), 2 ) AS total_purchase 
+FROM
+	orders 
+GROUP BY
+	listing_id 
+ORDER BY
+	total_purchase DESC;
+
+
+
+-- 11. Get the top 10 listings by total purchase and calculate the average total purchase
+
+SELECT
+	listing_id,
+	ROUND( SUM( price * quantity ), 2 ) AS total_purchase 
+FROM
+	orders 
+GROUP BY
+	listing_id 
+ORDER BY
+	total_purchase DESC 
+	LIMIT 10;
+
+
+
+-- 12. Investigate the relationship between listing start date and total sales per listing
+
+SELECT
+	O.listing_id,
+	L.listing_title,
+	L.listing_start_date,
+	ROUND( SUM( O.price * O.quantity ), 2 ) AS total_purchase 
+FROM
+	orders AS O
+	INNER JOIN listings AS L ON O.listing_id = L.listing_id 
+GROUP BY
+	O.listing_id,
+	L.listing_title,
+	L.listing_start_date 
+ORDER BY
+	total_purchase DESC;
+
+
+
+-- 13. Investigate the total sales per box_id
+
+SELECT
+	listings.box_id,
+	ROUND( SUM( orders.price * orders.quantity ), 2 ) AS total_purchase 
+FROM
+	orders
+	INNER JOIN listings ON orders.listing_id = listings.listing_id 
+GROUP BY
+	listings.box_id 
+ORDER BY
+	total_purchase DESC;
+
+
+
+-- 14. Compute the overall average sales across all box_ids
+
+SELECT
+	ROUND( AVG( total_purchase ), 2 ) AS average_total_purchase 
+FROM
+	(
+	SELECT
+		listings.box_id,
+		SUM( orders.price * orders.quantity ) AS total_purchase 
+	FROM
+		orders
+		INNER JOIN listings ON orders.listing_id = listings.listing_id 
+	GROUP BY
+		listings.box_id 
+	) AS box_totals;
+
+
+
+-- 15. Finding average review score
+
+SELECT
+	ROUND( AVG( star_rating ), 2 ) AS average_review_score 
+FROM
+	reviews;
+
+
+
+-- 16. Calculate the average star rating by year
+
+SELECT YEAR
+	( date_reviewed ) AS review_year,
+	ROUND( AVG( star_rating ), 2 ) AS average_star_rating 
+FROM
+	reviews 
+GROUP BY
+	review_year 
+ORDER BY
+	review_year;
+
+
+
+-- 17. Compare average total purchase for orders with and without coupon codes
+
+SELECT 
+    (coupon_code IS NOT NULL) AS has_coupon_code, 
+    ROUND(AVG(price * quantity), 2) AS average_order_total 
+FROM 
+    orders 
+GROUP BY 
+    has_coupon_code;
+
+
+
+-- 18. Identify repeat customers
+
+SELECT 
+    R.reviewer, 
+    COUNT(DISTINCT O.order_id) AS num_orders 
+FROM 
+    orders AS O
+INNER JOIN 
+    reviews AS R ON O.order_id = R.order_id 
+GROUP BY 
+    R.reviewer
+HAVING 
+    num_orders > 1;
+
+
+
+-- 19. Calculate average delivery time
+
+SELECT
+	AVG(
+	DATEDIFF( date_shipped, date_paid )) AS average_delivery_time 
+FROM
+	orders;
+
+
+
+-- 20. Calculate revenue by city
+
+SELECT 
+    C.addresses_city, 
+    ROUND(SUM(O.price * O.quantity), 2) AS total_revenue 
+FROM 
+    orders AS O
+INNER JOIN 
+    customers AS C ON O.order_id = C.order_id AND O.transaction_id = C.transaction_id
+GROUP BY 
+    C.addresses_city
+ORDER BY 
+    total_revenue DESC;
+
+
+
+-- 21. Calculate revenue by city and year
+
+SELECT 
+    C.addresses_city, 
+    YEAR(O.sale_date) AS year,
+    ROUND(SUM(O.price * O.quantity), 2) AS total_revenue 
+FROM 
+    orders AS O
+INNER JOIN 
+    customers AS C ON O.order_id = C.order_id AND O.transaction_id = C.transaction_id
+GROUP BY 
+    C.addresses_city, YEAR(O.sale_date)
+ORDER BY 
+    total_revenue DESC;
+
+
+
+-- 22. Calculate total quantity sold by city
+
+SELECT 
+    C.addresses_city, 
+    ROUND(SUM(O.quantity), 2) AS total_quantity_sold 
+FROM 
+    orders AS O
+INNER JOIN 
+    customers AS C ON O.order_id = C.order_id AND O.transaction_id = C.transaction_id
+GROUP BY 
+    C.addresses_city
+ORDER BY 
+    total_quantity_sold DESC;
+
+
+
+-- 23. Calculate monthly revenue
+
+SELECT 
+    DATE_FORMAT(sale_date, '%Y-%m') AS year_and_month,
+    ROUND(SUM(price * quantity), 2) AS monthly_revenue
+FROM 
+    orders
+GROUP BY 
+    year_and_month
+ORDER BY 
+    year_and_month;
+
+
+
+-- 24. Calculate average monthly order value
+
+SELECT 
+    DATE_FORMAT(sale_date, '%Y-%m') AS year_and_month,
+    ROUND(AVG(price * quantity), 2) AS average_order_value
+FROM 
+    orders
+GROUP BY 
+    year_and_month
+ORDER BY 
+    year_and_month;
+		
+
+
+
+
